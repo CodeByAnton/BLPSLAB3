@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  db1:
+    image: postgres:15
+    container_name: db1
+    environment:
+      POSTGRES_DB: db1
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    command:
+      - "postgres"
+      - "-c"
+      - "max_prepared_transactions=100"
+    volumes:
+      - db1_data:/var/lib/postgresql/data
+    networks:
+      - blpslab-network
+
+  db2:
+    image: postgres:15
+    container_name: db2
+    environment:
+      POSTGRES_DB: db2
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    command:
+      - "postgres"
+      - "-c"
+      - "max_prepared_transactions=100"
+    volumes:
+      - db2_data:/var/lib/postgresql/data
+    networks:
+      - blpslab-network
+
+  rabbitmq:
+    image: rabbitmq:3.11-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+      - "61613:61613"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    command: >
+      sh -c "rabbitmq-plugins enable --offline rabbitmq_stomp rabbitmq_management &&
+             rabbitmq-server"
+    networks:
+      - blpslab-network
+
+volumes:
+  db1_data:
+  db2_data:
+
+networks:
+  blpslab-network:
+    driver: bridge
