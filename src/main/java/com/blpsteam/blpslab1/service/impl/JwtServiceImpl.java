@@ -30,10 +30,7 @@ public class JwtServiceImpl implements JwtService {
                 .compact();
     }
 
-    @Override
-    public String extractUsername(String token) {
-        return getClaims(token).getSubject();
-    }
+
 
     private Claims getClaims(String token) {
         return Jwts.parser()

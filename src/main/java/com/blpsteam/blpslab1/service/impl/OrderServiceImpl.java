@@ -50,19 +50,29 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public String createOrder() {
-        log.info("CreateOrder method");
+        log.info("Попытка создания заказа");
         Long userId = userService.getUserIdFromContext();
+        log.info("Создание заказа для пользователя с ID: {}", userId);
+        
         User user = userRepository.findById(userId)
-                .orElseThrow(()->new UserAbsenceException("Пользователь не найден"));
+                .orElseThrow(()-> {
+                    log.warn("Попытка создания заказа несуществующим пользователем с ID: {}", userId);
+                    return new UserAbsenceException("Пользователь не найден");
+                });
 
         if (orderRepository.existsByUserIdAndStatus(userId, OrderStatus.UNPAID)) {
+            log.warn("Попытка создания заказа при наличии неоплаченного заказа. Пользователь ID: {}", userId);
             throw new OrderPaymentException("У пользователя уже есть неоплаченный заказ");
         }
 
         Cart cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new CartAbsenceException("Корзина для пользователя с id " + userId + " не найдена"));
+                .orElseThrow(() -> {
+                    log.warn("Попытка создания заказа без корзины. Пользователь ID: {}", userId);
+                    return new CartAbsenceException("Корзина для пользователя с id " + userId + " не найдена");
+                });
 
         if (cart.getItems().isEmpty()) {
+            log.warn("Попытка создания заказа с пустой корзиной. Пользователь ID: {}", userId);
             throw new CartItemAbsenceException("Корзина пуста");
         }
 
@@ -72,46 +82,59 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(OrderStatus.UNPAID);
         order.setCreatedAt(LocalDateTime.now());
         order = orderRepository.save(order);
+        log.info("Заказ успешно создан. ID заказа: {}, сумма: {} руб., пользователь ID: {}", 
+                order.getId(), order.getTotalPrice(), userId);
 
-        return paymentService.createPayment(order.getTotalPrice(), order.getId());
+        String paymentLink = paymentService.createPayment(order.getTotalPrice(), order.getId());
+        log.info("Ссылка на оплату для заказа ID: {} успешно сгенерирована", order.getId());
+        return paymentLink;
     }
 
     @Override
     @Transactional
     public void confirmPayment(String yooKassaPaymentResponse){
-        log.info("ConfirmPayment");
-        log.info(yooKassaPaymentResponse);
+        log.info("Получено уведомление от YooKassa о статусе платежа");
         ObjectMapper mapper = new ObjectMapper();
         JsonNode root;
         try {
             root = mapper.readTree(yooKassaPaymentResponse);
         } catch (Exception e) {
-            log.info(e.getMessage());
+            log.error("Ошибка при парсинге уведомления от YooKassa: {}", e.getMessage());
             throw new RuntimeException(e);
         }
 
         String event = root.path("event").asText();
-        log.info("event = {}", event);
+        log.info("Событие от YooKassa: {}", event);
         String status = root.path("object").path("status").asText();
-        log.info("status = {}", status);
+        log.info("Статус платежа: {}", status);
         String orderIdStr = root.path("object").path("metadata").path("order_id").asText();
         Long orderId = Long.parseLong(orderIdStr);
-        log.info("order_id = {}", orderId);
+        log.info("ID заказа из уведомления: {}", orderId);
 
         if ("payment.succeeded".equals(event) && "succeeded".equals(status)) {
-            log.info("Payment succeeded");
-            Order order = orderRepository.findById(orderId).orElseThrow(() -> new OrderAbsenceException("Заказ не найден"));
+            log.info("Платеж успешно обработан. Заказ ID: {}", orderId);
+            Order order = orderRepository.findById(orderId)
+                    .orElseThrow(() -> {
+                        log.error("Заказ с ID {} не найден при обработке платежа", orderId);
+                        return new OrderAbsenceException("Заказ не найден");
+                    });
             order.setStatus(OrderStatus.PAID);
             orderRepository.save(order);
             Long userId = order.getUser().getId();
+            log.info("Статус заказа ID: {} изменен на PAID. Очистка корзины пользователя ID: {}", orderId, userId);
             cartService.clearCartAfterPayment(userId);
-            log.info("userId = {}", userId);
+            log.info("Платеж успешно подтвержден. Заказ ID: {}, пользователь ID: {}", orderId, userId);
+        } else {
+            log.info("Платеж не подтвержден. Событие: {}, статус: {}, заказ ID: {}", event, status, orderId);
         }
     }
 
     public void sendPaymentReminders(List<Order> orders) {
+        log.info("Отправка напоминаний о платеже для {} заказов", orders.size());
         for (Order order : orders) {
-            log.info("Sending payment reminder to user {} for order {}", order.getUser().getId(), order.getId());
+            log.info("Отправка напоминания о платеже пользователю ID: {} для заказа ID: {}", 
+                    order.getUser().getId(), order.getId());
         }
+        log.info("Напоминания о платеже успешно отправлены");
     }
 }

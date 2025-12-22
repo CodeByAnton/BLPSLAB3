@@ -38,8 +38,15 @@ public class CartServiceImpl implements CartService {
     @Override
     public Cart getCart() {
         Long userId = userService.getUserIdFromContext();
-        return cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new CartAbsenceException("Корзина для пользователя с id " + userId + " не найдена"));
+        log.info("Получение корзины для пользователя ID: {}", userId);
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> {
+                    log.warn("Корзина для пользователя ID: {} не найдена", userId);
+                    return new CartAbsenceException("Корзина для пользователя с id " + userId + " не найдена");
+                });
+        log.info("Корзина успешно получена. Пользователь ID: {}, количество элементов: {}", 
+                userId, cart.getItems().size());
+        return cart;
     }
 
    
@@ -48,51 +55,73 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public Cart clearCart() {
-        log.info("ClearCart method");
         Long userId = userService.getUserIdFromContext();
+        log.info("Попытка очистки корзины для пользователя ID: {}", userId);
 
         if (orderRepository.existsByUserIdAndStatus(userId, OrderStatus.UNPAID)){
+            log.warn("Попытка очистки корзины при наличии неоплаченного заказа. Пользователь ID: {}", userId);
             throw new IllegalArgumentException("Нельзя очистить корзину, пока у вас есть неоплаченный заказ");
         }
 
-        Cart cart = cartRepository.findByUserId(userId).orElseThrow(() -> new CartAbsenceException("Корзина для пользователя с id " + userId + " не найдена"));
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> {
+                    log.warn("Попытка очистки несуществующей корзины. Пользователь ID: {}", userId);
+                    return new CartAbsenceException("Корзина для пользователя с id " + userId + " не найдена");
+                });
 
+        int itemsCount = cart.getItems().size();
         cartItemService.clearCartAndUpdateProductQuantities(cart.getId());
         cart.getItems().clear();
         cart.setTotalPrice(0L);
-        return cartRepository.save(cart);
+        Cart saved = cartRepository.save(cart);
+        log.info("Корзина успешно очищена. Пользователь ID: {}, удалено элементов: {}", userId, itemsCount);
+        return saved;
     }
 
     @Override
     @Transactional
     public Cart createCart() {
-        log.info("CreateCart method");
         Long userId = userService.getUserIdFromContext();
+        log.info("Попытка создания корзины для пользователя ID: {}", userId);
+        
         if (cartRepository.findByUserId(userId).isPresent()) {
+            log.warn("Попытка создания корзины при её наличии. Пользователь ID: {}", userId);
             throw new CartAbsenceException("У вас уже есть корзина");
         }
+        
         Cart cart = new Cart();
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserAbsenceException("Пользователь с таким id не найден"));
+                .orElseThrow(() -> {
+                    log.warn("Попытка создания корзины несуществующим пользователем ID: {}", userId);
+                    return new UserAbsenceException("Пользователь с таким id не найден");
+                });
         cart.setUser(user);
-        log.info("Cart has been created for user {}", userId);
-        return cartRepository.save(cart);
+        Cart saved = cartRepository.save(cart);
+        log.info("Корзина успешно создана для пользователя ID: {}. ID корзины: {}", userId, saved.getId());
+        return saved;
     }
 
     @Override
     @Transactional
     public void clearCartAfterPayment(Long userId) {
-        log.info("ClearCartAfterPayment method");
+        log.info("Очистка корзины после оплаты для пользователя ID: {}", userId);
+        
         if (orderRepository.existsByUserIdAndStatus(userId, OrderStatus.UNPAID)){
+            log.warn("Попытка очистки корзины после оплаты при наличии неоплаченного заказа. Пользователь ID: {}", userId);
             throw new IllegalArgumentException("Нельзя очистить корзину, пока у вас есть неоплаченный заказ");
         }
 
-        Cart cart = cartRepository.findByUserId(userId).orElseThrow(() -> new CartAbsenceException("Корзина для пользователя с id= " + userId + " не найдена"));
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> {
+                    log.error("Корзина не найдена при очистке после оплаты. Пользователь ID: {}", userId);
+                    return new CartAbsenceException("Корзина для пользователя с id= " + userId + " не найдена");
+                });
 
+        int itemsCount = cart.getItems().size();
         cart.getItems().clear();
         cart.setTotalPrice(0L);
         cartRepository.save(cart);
-        log.info("Cart has been cleared after payment for user {}", userId);
+        log.info("Корзина успешно очищена после оплаты. Пользователь ID: {}, удалено элементов: {}", userId, itemsCount);
     }
 }
 

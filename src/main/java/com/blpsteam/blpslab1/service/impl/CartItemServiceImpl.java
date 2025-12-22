@@ -69,36 +69,46 @@ public class CartItemServiceImpl implements CartItemService {
     @Override
     @Transactional
     public CartItem createCartItem(Long productId, int quantity) {
-        log.info("CreateCartItem method called");
+        log.info("Попытка добавления товара в корзину. Товар ID: {}, количество: {}", productId, quantity);
+        
         if (quantity <= 0){
+            log.warn("Попытка добавления товара с некорректным количеством: {}. Товар ID: {}", quantity, productId);
             throw new IllegalArgumentException("Измените количество товара, так как количество должно быть больше 0");
         }
 
-        Cart cart = cartRepository.findByUserId(userService.getUserIdFromContext())
+        Long userId = userService.getUserIdFromContext();
+        Cart cart = cartRepository.findByUserId(userId)
                 .orElseGet(() -> {
                     Cart newCart = new Cart();
-                    User user = userRepository.findById(userService.getUserIdFromContext())
-                            .orElseThrow(() -> new UserAbsenceException("Пользователь с id " + userService.getUserIdFromContext() + " не найден"));
+                    User user = userRepository.findById(userId)
+                            .orElseThrow(() -> new UserAbsenceException("Пользователь с id " + userId + " не найден"));
                     newCart.setUser(user);
-                    log.info("Creating new cart for user {}", user.getId());
+                    log.info("Создана новая корзина для пользователя ID: {}", user.getId());
                     return cartRepository.save(newCart);
                 });
-        log.info("Cart exists for user {}, so continue", cart.getUser().getId());
-        Long userId = cart.getUser().getId();
+        log.info("Корзина найдена для пользователя ID: {}", cart.getUser().getId());
+        
         if (orderRepository.existsByUserIdAndStatus(userId, OrderStatus.UNPAID)){
+            log.warn("Попытка добавления товара в корзину при наличии неоплаченного заказа. Пользователь ID: {}", userId);
             throw new IllegalArgumentException("Нельзя редактировать корзину, пока у вас есть неоплаченный заказ");
         }
 
-        Product product = productRepository.findById(productId).orElseThrow(
-                () -> new ProductAbsenceException("Товар с таким id не существует")
-        );
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> {
+                    log.warn("Попытка добавления несуществующего товара ID: {} в корзину", productId);
+                    return new ProductAbsenceException("Товар с таким id не существует");
+                });
+        
         if (!product.getApproved()){
+            log.warn("Попытка добавления неодобренного товара ID: {} в корзину", product.getId());
             throw new IllegalArgumentException("Нет одобренного товара с id " + product.getId());
         }
 
         if (cartItemRepository.findByCartIdAndProductId(cart.getId(), productId).isPresent()) {
+            log.warn("Попытка добавления уже существующего товара ID: {} в корзину ID: {}", productId, cart.getId());
             throw new IllegalArgumentException("Элемент корзины с этим товаром уже существует");
         }
+        
         int newQuantity = product.getQuantity() - quantity;
         if (newQuantity >= 0) {
             product.setQuantity(newQuantity);
@@ -113,30 +123,44 @@ public class CartItemServiceImpl implements CartItemService {
             cartItem = cartItemRepository.save(cartItem);
             cart.addItem(cartItem);
             cartRepository.save(cart);
-            log.info("Cart item with id {} created for user {}", cartItem.getId(), cart.getUser().getId());
+            log.info("Товар успешно добавлен в корзину. Элемент корзины ID: {}, товар ID: {}, количество: {}, пользователь ID: {}", 
+                    cartItem.getId(), productId, quantity, cart.getUser().getId());
             return cartItem;
         }
+        log.warn("Недостаточно товара для добавления в корзину. Товар ID: {}, запрошено: {}, доступно: {}", 
+                productId, quantity, product.getQuantity());
         throw new CartItemQuantityException("Недостаточно товара");
     }
 
     @Override
     @Transactional
     public CartItem updateCartItem(Long id, int quantity) {
-        log.info("UpdateCartItem method called");
+        log.info("Попытка обновления элемента корзины. Элемент ID: {}, новое количество: {}", id, quantity);
         Long userId = userService.getUserIdFromContext();
+        
         if (orderRepository.existsByUserIdAndStatus(userId, OrderStatus.UNPAID)){
+            log.warn("Попытка обновления элемента корзины при наличии неоплаченного заказа. Пользователь ID: {}", userId);
             throw new IllegalArgumentException("Нельзя редактировать корзину, пока у вас есть неоплаченный заказ");
         }
+        
         CartItem cartItem = cartItemRepository.findById(id)
-                .orElseThrow(() -> new CartItemAbsenceException("Элемент корзины не существует"));
+                .orElseThrow(() -> {
+                    log.warn("Попытка обновления несуществующего элемента корзины ID: {}", id);
+                    return new CartItemAbsenceException("Элемент корзины не существует");
+                });
         int previousQuantity = cartItem.getQuantity();
 
         if (quantity <= 0){
+            log.warn("Попытка обновления элемента корзины ID: {} с некорректным количеством: {}", id, quantity);
             throw new IllegalArgumentException("Измените количество товара, так как количество должно быть больше 0");
         }
-        Product product = productRepository.findById(cartItem.getProductId()).orElseThrow(
-                () -> new ProductAbsenceException("Товар с таким id не существует")
-        );
+        
+        Product product = productRepository.findById(cartItem.getProductId())
+                .orElseThrow(() -> {
+                    log.warn("Товар не найден при обновлении элемента корзины. Товар ID: {}, элемент корзины ID: {}", 
+                            cartItem.getProductId(), id);
+                    return new ProductAbsenceException("Товар с таким id не существует");
+                });
         int unitPrice = product.getPrice().intValue();
         int totalPrice = unitPrice * quantity;
 
@@ -151,58 +175,78 @@ public class CartItemServiceImpl implements CartItemService {
 
             cart.updateTotalPrice();
             cartRepository.save(cart);
-            log.info("Cart item with id {} updated for user {}", cartItem.getId(), cart.getUser().getId());
+            log.info("Элемент корзины успешно обновлен. Элемент ID: {}, количество: {} -> {}, пользователь ID: {}", 
+                    cartItem.getId(), previousQuantity, quantity, cart.getUser().getId());
             return cartItem;
         }
+        log.warn("Недостаточно товара для обновления элемента корзины. Элемент ID: {}, товар ID: {}, запрошено: {}, доступно: {}", 
+                id, cartItem.getProductId(), quantity, product.getQuantity() + previousQuantity);
         throw new CartItemQuantityException("Недостаточно товара");
     }
 
     @Override
     @Transactional
     public void deleteCartItemById(Long id) {
-        log.info("DeleteCartItemById method called");
+        log.info("Попытка удаления элемента корзины ID: {}", id);
         CartItem cartItem = cartItemRepository.findById(id)
-                .orElseThrow(() -> new CartItemAbsenceException("Элемент корзины не существует"));
+                .orElseThrow(() -> {
+                    log.warn("Попытка удаления несуществующего элемента корзины ID: {}", id);
+                    return new CartItemAbsenceException("Элемент корзины не существует");
+                });
 
-        Long userId=userService.getUserIdFromContext();
+        Long userId = userService.getUserIdFromContext();
         if (orderRepository.existsByUserIdAndStatus(userId, OrderStatus.UNPAID)){
+            log.warn("Попытка удаления элемента корзины при наличии неоплаченного заказа. Пользователь ID: {}", userId);
             throw new IllegalArgumentException("Нельзя редактировать корзину, пока у вас есть неоплаченный заказ");
         }
 
         Cart cart = cartItem.getCart();
-        if (!cart.getUser().getId().equals(userService.getUserIdFromContext())){
+        if (!cart.getUser().getId().equals(userId)){
+            log.warn("Попытка удаления элемента корзины другого пользователя. Элемент ID: {}, владелец корзины ID: {}, запросивший ID: {}", 
+                    id, cart.getUser().getId(), userId);
             throw new IllegalArgumentException("Вы не можете удалить элемент не из своей корзины");
         }
+        
         cart.removeItem(cartItem);
-
-
-        Product product = productRepository.findById(cartItem.getProductId()).orElseThrow(
-                () -> new ProductAbsenceException("Товар с таким id не существует")
-        );
+        Product product = productRepository.findById(cartItem.getProductId())
+                .orElseThrow(() -> {
+                    log.warn("Товар не найден при удалении элемента корзины. Товар ID: {}, элемент корзины ID: {}", 
+                            cartItem.getProductId(), id);
+                    return new ProductAbsenceException("Товар с таким id не существует");
+                });
+        
         int quantity = product.getQuantity();
         product.setQuantity(quantity + cartItem.getQuantity());
         productRepository.save(product);
         cartItemRepository.delete(cartItem);
         cartRepository.save(cart);
-        log.info("Cart item with id {} deleted for user {}", id, userId);
-
+        log.info("Элемент корзины успешно удален. Элемент ID: {}, товар ID: {}, возвращено количество: {}, пользователь ID: {}", 
+                id, cartItem.getProductId(), cartItem.getQuantity(), userId);
     }
 
     @Override
     @Transactional
     public void clearCartAndUpdateProductQuantities(Long cartId) {
-        log.info("ClearCartAndUpdateProductQuantities method called");
+        log.info("Очистка корзины и обновление количества товаров. Корзина ID: {}", cartId);
         List<CartItem> cartItems = cartItemRepository.findByCartId(cartId);
+        log.info("Найдено элементов в корзине для очистки: {}", cartItems.size());
 
         for (CartItem cartItem : cartItems) {
-            Product product = productRepository.findById(cartItem.getProductId()).orElseThrow(
-                    () -> new ProductAbsenceException("Товар с таким id не существует")
-            );
+            Product product = productRepository.findById(cartItem.getProductId())
+                    .orElseThrow(() -> {
+                        log.warn("Товар не найден при очистке корзины. Товар ID: {}, элемент корзины ID: {}", 
+                                cartItem.getProductId(), cartItem.getId());
+                        return new ProductAbsenceException("Товар с таким id не существует");
+                    });
             int quantity = product.getQuantity();
             product.setQuantity(quantity + cartItem.getQuantity());
             productRepository.save(product);
+            log.debug("Количество товара ID: {} восстановлено: {} -> {}", 
+                    cartItem.getProductId(), quantity, product.getQuantity());
         }
         cartItemRepository.deleteAll(cartItems);
+        log.info("Корзина ID: {} успешно очищена, количество товаров восстановлено для {} элементов", 
+                cartId, cartItems.size());
     }
 
 }
