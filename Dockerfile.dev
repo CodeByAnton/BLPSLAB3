@@ -1,0 +1,13 @@
+# Dockerfile для разработки
+FROM gradle:8.5-jdk17
+WORKDIR /app
+
+# Устанавливаем дополнительные инструменты для разработки
+RUN apk add --no-cache bash curl
+
+# Копируем файлы
+COPY . .
+
+# Запускаем приложение в режиме разработки
+CMD ["gradle", "bootRun"]
+
