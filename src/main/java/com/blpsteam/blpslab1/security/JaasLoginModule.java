@@ -1,8 +1,8 @@
 package com.blpsteam.blpslab1.security;
 
 import com.blpsteam.blpslab1.data.entities.core.User;
-import com.blpsteam.blpslab1.exceptions.InvalidCredentialsException;
-import com.blpsteam.blpslab1.exceptions.UsernameNotFoundException;
+import com.blpsteam.blpslab1.exceptions.impl.InvalidCredentialsException;
+import com.blpsteam.blpslab1.exceptions.impl.UsernameNotFoundException;
 import com.blpsteam.blpslab1.repositories.core.UserRepository;
 import com.blpsteam.blpslab1.util.SpringContext;
 
@@ -38,20 +38,20 @@ public class JaasLoginModule implements LoginModule {
             String password = new String(passwordCallback.getPassword());
 
             User user = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+                    .orElseThrow(() -> new UsernameNotFoundException("Пользователь не найден"));
 
             org.springframework.security.crypto.password.PasswordEncoder passwordEncoder =
                     SpringContext.getBean(org.springframework.security.crypto.password.PasswordEncoder.class);
 
             if (!passwordEncoder.matches(password, user.getPassword())) {
-                throw new InvalidCredentialsException("Invalid credentials");
+                throw new InvalidCredentialsException("Неверные учетные данные");
             }
 
             subject.getPrincipals().add(new UserPrincipal(user.getUsername()));
             return true;
 
         } catch (IOException | UnsupportedCallbackException e) {
-            throw new LoginException("Callback error: " + e.getMessage());
+            throw new LoginException("Ошибка callback: " + e.getMessage());
         }
     }
 

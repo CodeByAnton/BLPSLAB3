@@ -4,22 +4,23 @@ import com.blpsteam.blpslab1.data.entities.core.Order;
 import com.blpsteam.blpslab1.data.enums.OrderStatus;
 import com.blpsteam.blpslab1.repositories.core.OrderRepository;
 import com.blpsteam.blpslab1.service.OrderService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class OrderReminderScheduler {
 
-    private final OrderRepository orderRepository;
-    private final OrderService orderService;
+    @Autowired
+    private OrderRepository orderRepository;
+    
+    @Autowired
+    private OrderService orderService;
 
     @Scheduled(fixedRate = 60_000)
     @Transactional

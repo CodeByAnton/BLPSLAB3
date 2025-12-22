@@ -1,6 +1,8 @@
-package com.blpsteam.blpslab1.exceptions;
+package com.blpsteam.blpslab1.exceptions.impl;
 
-public class CartItemQuantityException extends RuntimeException {
+import com.blpsteam.blpslab1.exceptions.ValidationException;
+
+public class CartItemQuantityException extends ValidationException {
     public CartItemQuantityException(String message) {
         super(message);
     }
@@ -9,3 +11,4 @@ public class CartItemQuantityException extends RuntimeException {
         super(message, cause);
     }
 }
+

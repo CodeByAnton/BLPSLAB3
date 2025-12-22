@@ -1,8 +1,8 @@
 package com.blpsteam.blpslab1.exceptions.impl;
 
-import com.blpsteam.blpslab1.exceptions.EntityAbsenceException;
+import com.blpsteam.blpslab1.exceptions.NotFoundException;
 
-public class ProductAbsenceException extends EntityAbsenceException {
+public class ProductAbsenceException extends NotFoundException {
     public ProductAbsenceException(String message) {
         super(message);
     }

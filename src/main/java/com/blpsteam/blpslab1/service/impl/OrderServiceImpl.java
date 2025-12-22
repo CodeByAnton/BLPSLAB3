@@ -4,22 +4,22 @@ import com.blpsteam.blpslab1.data.entities.core.Cart;
 import com.blpsteam.blpslab1.data.entities.core.Order;
 import com.blpsteam.blpslab1.data.entities.core.User;
 import com.blpsteam.blpslab1.data.enums.OrderStatus;
-import com.blpsteam.blpslab1.exceptions.OrderPaymentException;
+import com.blpsteam.blpslab1.exceptions.impl.OrderPaymentException;
 import com.blpsteam.blpslab1.exceptions.impl.CartItemAbsenceException;
 import com.blpsteam.blpslab1.exceptions.impl.OrderAbsenceException;
 import com.blpsteam.blpslab1.exceptions.impl.UserAbsenceException;
-import com.blpsteam.blpslab1.jca.YookassaConnection;
+import com.blpsteam.blpslab1.exceptions.impl.CartAbsenceException;
+import com.blpsteam.blpslab1.service.PaymentService;
+import com.blpsteam.blpslab1.repositories.core.CartRepository;
 import com.blpsteam.blpslab1.repositories.core.OrderRepository;
 import com.blpsteam.blpslab1.repositories.core.UserRepository;
 import com.blpsteam.blpslab1.service.CartService;
 import com.blpsteam.blpslab1.service.OrderService;
 import com.blpsteam.blpslab1.service.UserService;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,40 +30,40 @@ import java.util.List;
 @Service
 public class OrderServiceImpl implements OrderService {
 
+    @Autowired
+    private OrderRepository orderRepository;
+    
+    @Autowired
+    private UserRepository userRepository;
 
-    private final OrderRepository orderRepository;
-    private final UserRepository userRepository;
-    private final CartService cartService;
-    private final UserService userService;
-    private final YookassaConnection yookassaConnection;
-
-
-    public OrderServiceImpl(OrderRepository orderRepository, UserRepository userRepository,
-                            CartService cartService, UserService userService,
-                            YookassaConnection yookassaConnection) {
-        this.orderRepository = orderRepository;
-        this.userRepository = userRepository;
-        this.cartService = cartService;
-        this.userService = userService;
-        this.yookassaConnection = yookassaConnection;
-
-    }
+    @Autowired
+    private CartRepository cartRepository;
+    
+    @Autowired
+    private CartService cartService;
+    
+    @Autowired
+    private UserService userService;
+    
+    @Autowired
+    private PaymentService paymentService;
     @Override
     @Transactional
     public String createOrder() {
         log.info("CreateOrder method");
         Long userId = userService.getUserIdFromContext();
         User user = userRepository.findById(userId)
-                .orElseThrow(()->new UserAbsenceException("User not found"));
+                .orElseThrow(()->new UserAbsenceException("Пользователь не найден"));
 
         if (orderRepository.existsByUserIdAndStatus(userId, OrderStatus.UNPAID)) {
-            throw new OrderPaymentException("User already has an unpaid order");
+            throw new OrderPaymentException("У пользователя уже есть неоплаченный заказ");
         }
 
-        Cart cart = cartService.getCart();
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new CartAbsenceException("Корзина для пользователя с id " + userId + " не найдена"));
 
         if (cart.getItems().isEmpty()) {
-            throw new CartItemAbsenceException("Cart is empty");
+            throw new CartItemAbsenceException("Корзина пуста");
         }
 
         Order order = new Order();
@@ -73,11 +73,8 @@ public class OrderServiceImpl implements OrderService {
         order.setCreatedAt(LocalDateTime.now());
         order = orderRepository.save(order);
 
-        return yookassaConnection.createPayment(order.getTotalPrice(),order.getId());
-
-
+        return paymentService.createPayment(order.getTotalPrice(), order.getId());
     }
-
 
     @Override
     @Transactional
@@ -85,10 +82,10 @@ public class OrderServiceImpl implements OrderService {
         log.info("ConfirmPayment");
         log.info(yooKassaPaymentResponse);
         ObjectMapper mapper = new ObjectMapper();
-        JsonNode root = null;
+        JsonNode root;
         try {
             root = mapper.readTree(yooKassaPaymentResponse);
-        } catch (JsonProcessingException e) {
+        } catch (Exception e) {
             log.info(e.getMessage());
             throw new RuntimeException(e);
         }
@@ -103,7 +100,7 @@ public class OrderServiceImpl implements OrderService {
 
         if ("payment.succeeded".equals(event) && "succeeded".equals(status)) {
             log.info("Payment succeeded");
-            Order order = orderRepository.findById(orderId).orElseThrow(() -> new OrderAbsenceException("Order not found"));
+            Order order = orderRepository.findById(orderId).orElseThrow(() -> new OrderAbsenceException("Заказ не найден"));
             order.setStatus(OrderStatus.PAID);
             orderRepository.save(order);
             Long userId = order.getUser().getId();
@@ -115,7 +112,6 @@ public class OrderServiceImpl implements OrderService {
     public void sendPaymentReminders(List<Order> orders) {
         for (Order order : orders) {
             log.info("Sending payment reminder to user {} for order {}", order.getUser().getId(), order.getId());
-            System.out.println("PAAAAAAAAAAAAAAAAAAAAAAAAY");
         }
     }
 }

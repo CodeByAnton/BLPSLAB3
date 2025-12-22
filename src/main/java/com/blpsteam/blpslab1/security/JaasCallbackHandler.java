@@ -20,7 +20,7 @@ public class JaasCallbackHandler implements CallbackHandler {
             } else if (callback instanceof PasswordCallback) {
                 ((PasswordCallback) callback).setPassword(password.toCharArray());
             } else {
-                throw new UnsupportedCallbackException(callback, "Unsupported callback");
+                throw new UnsupportedCallbackException(callback, "Неподдерживаемый callback");
             }
         }
     }

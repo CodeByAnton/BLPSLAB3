@@ -11,56 +11,56 @@ import com.blpsteam.blpslab1.repositories.core.UserRepository;
 import com.blpsteam.blpslab1.service.CartItemService;
 import com.blpsteam.blpslab1.service.CartService;
 import com.blpsteam.blpslab1.service.UserService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 public class CartServiceImpl implements CartService {
 
-    private static final Logger log = LoggerFactory.getLogger(CartServiceImpl.class);
-    private final CartRepository cartRepository;
-    private final UserRepository userRepository;
-    private final UserService userService;
-    private final CartItemService cartItemService;
-    private final OrderRepository orderRepository;
-
-    public CartServiceImpl(CartRepository cartRepository, UserRepository userRepository, UserService userService, CartItemService cartItemService, OrderRepository orderRepository) {
-        this.cartRepository = cartRepository;
-        this.userRepository = userRepository;
-        this.userService = userService;
-        this.cartItemService = cartItemService;
-
-        this.orderRepository = orderRepository;
-    }
+    @Autowired
+    private CartRepository cartRepository;
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @Autowired
+    private UserService userService;
+    
+    @Autowired
+    private CartItemService cartItemService;
+    
+    @Autowired
+    private OrderRepository orderRepository;
 
     @Override
     public Cart getCart() {
         Long userId = userService.getUserIdFromContext();
-        Cart cart = cartRepository.findByUserId(userId).orElseThrow(() -> new CartAbsenceException("Корзина для пользователя с id " + userId + " не найдена"));
-        Long total = cart.getTotalPrice();
-        cart.setTotalPrice(total);
-        return cart;
+        return cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new CartAbsenceException("Корзина для пользователя с id " + userId + " не найдена"));
     }
+
+   
+    
 
     @Override
     @Transactional
-    public void clearCart() {
+    public Cart clearCart() {
         log.info("ClearCart method");
         Long userId = userService.getUserIdFromContext();
 
         if (orderRepository.existsByUserIdAndStatus(userId, OrderStatus.UNPAID)){
-            throw new IllegalArgumentException("You can't clear cart while you have unpaid order");
-        };
+            throw new IllegalArgumentException("Нельзя очистить корзину, пока у вас есть неоплаченный заказ");
+        }
 
         Cart cart = cartRepository.findByUserId(userId).orElseThrow(() -> new CartAbsenceException("Корзина для пользователя с id " + userId + " не найдена"));
 
         cartItemService.clearCartAndUpdateProductQuantities(cart.getId());
         cart.getItems().clear();
         cart.setTotalPrice(0L);
-        cartRepository.save(cart);
-        log.info("Cart has been cleared for user {}", userId);
+        return cartRepository.save(cart);
     }
 
     @Override
@@ -69,49 +69,30 @@ public class CartServiceImpl implements CartService {
         log.info("CreateCart method");
         Long userId = userService.getUserIdFromContext();
         if (cartRepository.findByUserId(userId).isPresent()) {
-            throw new CartAbsenceException("You already have a cart");
+            throw new CartAbsenceException("У вас уже есть корзина");
         }
         Cart cart = new Cart();
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserAbsenceException("User with this id not found"));
+                .orElseThrow(() -> new UserAbsenceException("Пользователь с таким id не найден"));
         cart.setUser(user);
         log.info("Cart has been created for user {}", userId);
         return cartRepository.save(cart);
     }
-
-//    @Override
-//    @Transactional
-//    public void clearCartAfterPayment() {
-//        log.info("ClearCartAfterPayment method");
-//        Long userId = userService.getUserIdFromContext();
-//
-//        if (orderRepository.existsByUserIdAndStatus(userId, OrderStatus.UNPAID)){
-//            throw new IllegalArgumentException("You can't clear cart while you have unpaid order");
-//        };
-//
-//        Cart cart = cartRepository.findByUserId(userId).orElseThrow(() -> new CartAbsenceException("Cart for user with id= " + userId + " not found"));
-//
-//        System.out.println(cart.getItems());
-//        cart.getItems().clear();
-//        cart.setTotalPrice(0L);
-//        cartRepository.save(cart);
-//        log.info("Cart has been cleared after payment for user {}", userId);
-//    }
 
     @Override
     @Transactional
     public void clearCartAfterPayment(Long userId) {
         log.info("ClearCartAfterPayment method");
         if (orderRepository.existsByUserIdAndStatus(userId, OrderStatus.UNPAID)){
-            throw new IllegalArgumentException("You can't clear cart while you have unpaid order");
-        };
+            throw new IllegalArgumentException("Нельзя очистить корзину, пока у вас есть неоплаченный заказ");
+        }
 
-        Cart cart = cartRepository.findByUserId(userId).orElseThrow(() -> new CartAbsenceException("Cart for user with id= " + userId + " not found"));
+        Cart cart = cartRepository.findByUserId(userId).orElseThrow(() -> new CartAbsenceException("Корзина для пользователя с id= " + userId + " не найдена"));
 
-        System.out.println(cart.getItems());
         cart.getItems().clear();
         cart.setTotalPrice(0L);
         cartRepository.save(cart);
         log.info("Cart has been cleared after payment for user {}", userId);
     }
 }
+

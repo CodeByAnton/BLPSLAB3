@@ -1,8 +1,8 @@
 package com.blpsteam.blpslab1.exceptions.impl;
 
-import com.blpsteam.blpslab1.exceptions.EntityAbsenceException;
+import com.blpsteam.blpslab1.exceptions.NotFoundException;
 
-public class CartItemAbsenceException extends EntityAbsenceException {
+public class CartItemAbsenceException extends NotFoundException {
     public CartItemAbsenceException(String message) {
         super(message);
     }

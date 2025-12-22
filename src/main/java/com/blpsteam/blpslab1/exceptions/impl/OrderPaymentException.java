@@ -1,6 +1,8 @@
-package com.blpsteam.blpslab1.exceptions;
+package com.blpsteam.blpslab1.exceptions.impl;
 
-public class OrderPaymentException extends RuntimeException {
+import com.blpsteam.blpslab1.exceptions.BusinessException;
+
+public class OrderPaymentException extends BusinessException {
     public OrderPaymentException(String message) {
         super(message);
     }
@@ -9,3 +11,4 @@ public class OrderPaymentException extends RuntimeException {
         super(message, cause);
     }
 }
+

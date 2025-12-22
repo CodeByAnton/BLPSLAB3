@@ -1,7 +1,6 @@
 package com.blpsteam.blpslab1.service;
 
 import com.blpsteam.blpslab1.data.entities.core.Order;
-import com.fasterxml.jackson.core.JsonProcessingException;
 
 import java.util.List;
 

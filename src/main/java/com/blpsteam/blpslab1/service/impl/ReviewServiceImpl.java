@@ -1,46 +1,44 @@
 package com.blpsteam.blpslab1.service.impl;
 
 import com.blpsteam.blpslab1.dto.ReviewRequestDTO;
-import com.blpsteam.blpslab1.exceptions.ReviewDataException;
+import com.blpsteam.blpslab1.exceptions.impl.ReviewDataException;
 import com.blpsteam.blpslab1.exceptions.impl.ReviewAbsenceException;
 import com.blpsteam.blpslab1.repositories.core.ReviewRepository;
-import com.blpsteam.blpslab1.repositories.core.UserRepository;
 import com.blpsteam.blpslab1.repositories.product.ProductRepository;
 import com.blpsteam.blpslab1.service.ReviewService;
 import com.blpsteam.blpslab1.service.UserService;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ReviewServiceImpl implements ReviewService {
 
-    private final SimpMessagingTemplate messagingTemplate;
-    private final ReviewRepository reviewRepository;
-    private final UserService userService;
-    private final ProductRepository productRepository;
-
-    public ReviewServiceImpl(SimpMessagingTemplate messagingTemplate, ReviewRepository reviewRepository,
-                             UserService userService, ProductRepository productRepository) {
-        this.messagingTemplate = messagingTemplate;
-        this.reviewRepository = reviewRepository;
-        this.userService = userService;
-        this.productRepository = productRepository;
-    }
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
+    
+    @Autowired
+    private ReviewRepository reviewRepository;
+    
+    @Autowired
+    private UserService userService;
+    
+    @Autowired
+    private ProductRepository productRepository;
 
     @Override
-    public void publishReview(ReviewRequestDTO reviewDTO) {
-        if (!productRepository.existsById(reviewDTO.productId())){
-            throw new ReviewAbsenceException("Product does not exist");
+    public void publishReview(Long productId, int rating) {
+        if (!productRepository.existsById(productId)){
+            throw new ReviewAbsenceException("Товар не существует");
         }
-        Long userId=userService.getUserIdFromContext();
-        if (reviewRepository.findByUserIdAndProductId(userId,reviewDTO.productId()).isPresent()) {
-            throw new ReviewAbsenceException("Ur review on this product already exists");
+        Long userId = userService.getUserIdFromContext();
+        if (reviewRepository.findByUserIdAndProductId(userId, productId).isPresent()) {
+            throw new ReviewAbsenceException("Ваш отзыв на этот товар уже существует");
         }
-        if (reviewDTO.rating() < 0 || reviewDTO.rating() > 5) {
-            throw new ReviewDataException("Rating must be between 0 and 5");
+        if (rating < 0 || rating > 5) {
+            throw new ReviewDataException("Рейтинг должен быть от 0 до 5");
         }
-        ReviewRequestDTO fullDTO=new ReviewRequestDTO(reviewDTO.productId(),userId,reviewDTO.rating());
-        messagingTemplate.convertAndSend("/queue/reviews", fullDTO);
+        ReviewRequestDTO reviewDTO = new ReviewRequestDTO(productId, userId, rating);
+        messagingTemplate.convertAndSend("/queue/reviews", reviewDTO);
     }
 }

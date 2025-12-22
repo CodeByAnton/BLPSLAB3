@@ -50,8 +50,6 @@ dependencies {
 	implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
 	implementation 'jakarta.transaction:jakarta.transaction-api:2.0.1'
 
-	//JCA
-	implementation 'jakarta.resource:jakarta.resource-api:2.1.0'
 
 	// Добавляем WebSocket поддержку
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
