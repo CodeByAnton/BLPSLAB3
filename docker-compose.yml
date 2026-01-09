@@ -18,6 +18,11 @@ services:
       - db1_data:/var/lib/postgresql/data
     networks:
       - blpslab-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   db2:
     image: postgres:15
@@ -36,6 +41,11 @@ services:
       - db2_data:/var/lib/postgresql/data
     networks:
       - blpslab-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   rabbitmq:
     image: rabbitmq:3.11-management
@@ -52,6 +62,48 @@ services:
              rabbitmq-server"
     networks:
       - blpslab-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: blpslab-app
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      SPRING_DATASOURCE_PRIMARY_URL: jdbc:postgresql://db1:5432/db1
+      SPRING_DATASOURCE_PRIMARY_USERNAME: postgres
+      SPRING_DATASOURCE_PRIMARY_PASSWORD: postgres
+      SPRING_DATASOURCE_SECONDARY_URL: jdbc:postgresql://db2:5432/db2
+      SPRING_DATASOURCE_SECONDARY_USERNAME: postgres
+      SPRING_DATASOURCE_SECONDARY_PASSWORD: postgres
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
+      APP_JWT_LIFETIME: ${APP_JWT_LIFETIME:-3600000}
+      YOOKASSA_API_URL: ${YOOKASSA_API_URL:-https://api.yookassa.ru/v3/payments}
+      YOOKASSA_RETURN_URL: ${YOOKASSA_RETURN_URL:-https://se.ifmo.ru/}
+      SPRING_PROFILES_ACTIVE: "prod"
+    depends_on:
+      db1:
+        condition: service_healthy
+      db2:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - blpslab-network
+    restart: unless-stopped
 
 volumes:
   db1_data:

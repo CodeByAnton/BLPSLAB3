@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/buyers/carts")
-@Tag(name = "Корзина", description = "API для работы с корзиной покупателя")
+@Tag(name = "Корзина", description = "API для работы с корзиной")
 public class CartController {
 
     @Autowired

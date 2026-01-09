@@ -1,4 +1,4 @@
-package com.blpsteam.blpslab1.service.impl;
+package com.blpsteam.blpslab1.unit;
 
 import com.blpsteam.blpslab1.data.entities.core.User;
 import com.blpsteam.blpslab1.data.enums.Role;
@@ -54,15 +54,12 @@ class UserServiceImplTest {
 
     @Test
     void testRegister_Success() {
-        // Arrange
         when(userRepository.findByUsername(USERNAME)).thenReturn(Optional.empty());
         when(passwordEncoder.encode(PASSWORD)).thenReturn(ENCODED_PASSWORD);
         when(userRepository.save(any(User.class))).thenReturn(testUser);
 
-        // Act
         User result = userService.register(USERNAME, PASSWORD, Role.BUYER);
 
-        // Assert
         assertNotNull(result);
         assertEquals(USERNAME, result.getUsername());
         assertEquals(Role.BUYER, result.getRole());
@@ -72,10 +69,8 @@ class UserServiceImplTest {
 
     @Test
     void testRegister_UsernameAlreadyExists() {
-        // Arrange
         when(userRepository.findByUsername(USERNAME)).thenReturn(Optional.of(testUser));
 
-        // Act & Assert
         assertThrows(UsernameAlreadyExistsException.class, () -> {
             userService.register(USERNAME, PASSWORD, Role.BUYER);
         });
@@ -84,10 +79,8 @@ class UserServiceImplTest {
 
     @Test
     void testRegister_AdminAlreadyExists() {
-        // Arrange
         when(userRepository.existsByRole(Role.ADMIN)).thenReturn(true);
 
-        // Act & Assert
         assertThrows(AdminAlreadyExistsException.class, () -> {
             userService.register(USERNAME, PASSWORD, Role.ADMIN);
         });
@@ -96,7 +89,6 @@ class UserServiceImplTest {
 
     @Test
     void testRegister_EmptyUsername() {
-        // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> {
             userService.register("", PASSWORD, Role.BUYER);
         });
@@ -105,7 +97,6 @@ class UserServiceImplTest {
 
     @Test
     void testRegister_EmptyPassword() {
-        // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> {
             userService.register(USERNAME, "", Role.BUYER);
         });
@@ -114,15 +105,12 @@ class UserServiceImplTest {
 
     @Test
     void testLogin_Success() {
-        // Arrange
         when(userRepository.findByUsername(USERNAME)).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches(PASSWORD, ENCODED_PASSWORD)).thenReturn(true);
         when(jwtService.generateToken(testUser)).thenReturn("jwt-token");
 
-        // Act
         String token = userService.login(USERNAME, PASSWORD);
 
-        // Assert
         assertNotNull(token);
         assertEquals("jwt-token", token);
         verify(jwtService).generateToken(testUser);
@@ -130,10 +118,8 @@ class UserServiceImplTest {
 
     @Test
     void testLogin_UserNotFound() {
-        // Arrange
         when(userRepository.findByUsername(USERNAME)).thenReturn(Optional.empty());
 
-        // Act & Assert
         assertThrows(UsernameNotFoundException.class, () -> {
             userService.login(USERNAME, PASSWORD);
         });
@@ -142,11 +128,9 @@ class UserServiceImplTest {
 
     @Test
     void testLogin_InvalidPassword() {
-        // Arrange
         when(userRepository.findByUsername(USERNAME)).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches(PASSWORD, ENCODED_PASSWORD)).thenReturn(false);
 
-        // Act & Assert
         assertThrows(InvalidCredentialsException.class, () -> {
             userService.login(USERNAME, PASSWORD);
         });

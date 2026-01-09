@@ -1,4 +1,4 @@
-package com.blpsteam.blpslab1.service.impl;
+package com.blpsteam.blpslab1.unit;
 
 import com.blpsteam.blpslab1.data.entities.core.Cart;
 import com.blpsteam.blpslab1.data.entities.core.CartItem;
@@ -101,13 +101,9 @@ class CartItemServiceImplTest {
 
     @Test
     void testGetCartItemById_Success() {
-        // Arrange
         when(cartItemRepository.findById(CART_ITEM_ID)).thenReturn(Optional.of(testCartItem));
 
-        // Act
         CartItem result = cartItemService.getCartItemById(CART_ITEM_ID);
-
-        // Assert
         assertNotNull(result);
         assertEquals(CART_ITEM_ID, result.getId());
         verify(cartItemRepository).findById(CART_ITEM_ID);
@@ -115,10 +111,8 @@ class CartItemServiceImplTest {
 
     @Test
     void testGetCartItemById_NotFound() {
-        // Arrange
         when(cartItemRepository.findById(CART_ITEM_ID)).thenReturn(Optional.empty());
 
-        // Act & Assert
         assertThrows(CartItemAbsenceException.class, () -> {
             cartItemService.getCartItemById(CART_ITEM_ID);
         });
@@ -126,7 +120,6 @@ class CartItemServiceImplTest {
 
     @Test
     void testGetAllCartItems_Success() {
-        // Arrange
         Pageable pageable = PageRequest.of(0, 10);
         List<CartItem> cartItems = List.of(testCartItem);
         
@@ -134,10 +127,7 @@ class CartItemServiceImplTest {
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(testCart));
         when(cartItemRepository.findByCartId(CART_ID)).thenReturn(cartItems);
 
-        // Act
         Page<CartItem> result = cartItemService.getAllCartItems(pageable);
-
-        // Assert
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
         verify(cartRepository).findByUserId(USER_ID);
@@ -146,12 +136,9 @@ class CartItemServiceImplTest {
 
     @Test
     void testGetAllCartItems_CartNotFound() {
-        // Arrange
         Pageable pageable = PageRequest.of(0, 10);
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
-
-        // Act & Assert
         assertThrows(CartAbsenceException.class, () -> {
             cartItemService.getAllCartItems(pageable);
         });
@@ -159,7 +146,6 @@ class CartItemServiceImplTest {
 
     @Test
     void testCreateCartItem_Success() {
-        // Arrange
         int quantity = 5;
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(testCart));
@@ -173,10 +159,7 @@ class CartItemServiceImplTest {
         });
         when(cartRepository.save(any(Cart.class))).thenReturn(testCart);
 
-        // Act
         CartItem result = cartItemService.createCartItem(PRODUCT_ID, quantity);
-
-        // Assert
         assertNotNull(result);
         assertEquals(quantity, result.getQuantity());
         assertEquals(PRODUCT_ID, result.getProductId());
@@ -187,7 +170,6 @@ class CartItemServiceImplTest {
 
     @Test
     void testCreateCartItem_CartCreatedAutomatically() {
-        // Arrange
         int quantity = 5;
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
@@ -206,24 +188,18 @@ class CartItemServiceImplTest {
             return item;
         });
 
-        // Act
         CartItem result = cartItemService.createCartItem(PRODUCT_ID, quantity);
 
-        // Assert
         assertNotNull(result);
-        // Корзина сохраняется дважды: при создании и после добавления элемента
         verify(cartRepository, times(2)).save(any(Cart.class));
     }
 
     @Test
     void testCreateCartItem_UserNotFound() {
-        // Arrange
         int quantity = 5;
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
         when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
-
-        // Act & Assert
         assertThrows(UserAbsenceException.class, () -> {
             cartItemService.createCartItem(PRODUCT_ID, quantity);
         });
@@ -239,9 +215,6 @@ class CartItemServiceImplTest {
 
     @Test
     void testCreateCartItem_InvalidQuantity_Negative() {
-        // Act & Assert
-        // Проверка quantity <= 0 происходит ПЕРВОЙ в методе, до любых других вызовов
-        // Поэтому моки не нужны - исключение выбрасывается сразу
         assertThrows(IllegalArgumentException.class, () -> {
             cartItemService.createCartItem(PRODUCT_ID, -1);
         });
@@ -249,13 +222,10 @@ class CartItemServiceImplTest {
 
     @Test
     void testCreateCartItem_UnpaidOrderExists() {
-        // Arrange
         int quantity = 5;
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(testCart));
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(true);
-
-        // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> {
             cartItemService.createCartItem(PRODUCT_ID, quantity);
         });
@@ -264,14 +234,11 @@ class CartItemServiceImplTest {
 
     @Test
     void testCreateCartItem_ProductNotFound() {
-        // Arrange
         int quantity = 5;
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(testCart));
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(false);
         when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.empty());
-
-        // Act & Assert
         assertThrows(ProductAbsenceException.class, () -> {
             cartItemService.createCartItem(PRODUCT_ID, quantity);
         });
@@ -279,15 +246,12 @@ class CartItemServiceImplTest {
 
     @Test
     void testCreateCartItem_ProductNotApproved() {
-        // Arrange
         int quantity = 5;
         testProduct.setApproved(false);
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(testCart));
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(false);
         when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(testProduct));
-
-        // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> {
             cartItemService.createCartItem(PRODUCT_ID, quantity);
         });
@@ -295,7 +259,6 @@ class CartItemServiceImplTest {
 
     @Test
     void testCreateCartItem_DuplicateItem() {
-        // Arrange
         int quantity = 5;
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(testCart));
@@ -303,8 +266,6 @@ class CartItemServiceImplTest {
         when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(testProduct));
         when(cartItemRepository.findByCartIdAndProductId(CART_ID, PRODUCT_ID))
                 .thenReturn(Optional.of(testCartItem));
-
-        // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> {
             cartItemService.createCartItem(PRODUCT_ID, quantity);
         });
@@ -312,15 +273,12 @@ class CartItemServiceImplTest {
 
     @Test
     void testCreateCartItem_InsufficientQuantity() {
-        // Arrange
-        int quantity = 150; // Больше чем доступно (100)
+        int quantity = 150;
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(testCart));
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(false);
         when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(testProduct));
         when(cartItemRepository.findByCartIdAndProductId(CART_ID, PRODUCT_ID)).thenReturn(Optional.empty());
-
-        // Act & Assert
         assertThrows(CartItemQuantityException.class, () -> {
             cartItemService.createCartItem(PRODUCT_ID, quantity);
         });
@@ -329,37 +287,28 @@ class CartItemServiceImplTest {
 
     @Test
     void testUpdateCartItem_Success() {
-        // Arrange
         int newQuantity = 10;
         testCart.getItems().add(testCartItem);
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(false);
         when(cartItemRepository.findById(CART_ITEM_ID)).thenReturn(Optional.of(testCartItem));
-        // Важно: используем PRODUCT_ID напрямую, так как testCartItem.getProductId() возвращает PRODUCT_ID
         when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(testProduct));
         when(cartItemRepository.save(any(CartItem.class))).thenReturn(testCartItem);
         when(cartRepository.save(any(Cart.class))).thenReturn(testCart);
 
-        // Act
         CartItem result = cartItemService.updateCartItem(CART_ITEM_ID, newQuantity);
 
-        // Assert
         assertNotNull(result);
         assertEquals(newQuantity, result.getQuantity());
-        // Примечание: в текущей реализации productRepository.save() не вызывается в updateCartItem
-        // хотя количество товара обновляется, но не сохраняется
         verify(cartItemRepository).save(testCartItem);
         verify(cartRepository).save(testCart);
     }
 
     @Test
     void testUpdateCartItem_UnpaidOrderExists() {
-        // Arrange
         int newQuantity = 10;
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(true);
-
-        // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> {
             cartItemService.updateCartItem(CART_ITEM_ID, newQuantity);
         });
@@ -368,13 +317,10 @@ class CartItemServiceImplTest {
 
     @Test
     void testUpdateCartItem_CartItemNotFound() {
-        // Arrange
         int newQuantity = 10;
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(false);
         when(cartItemRepository.findById(CART_ITEM_ID)).thenReturn(Optional.empty());
-
-        // Act & Assert
         assertThrows(CartItemAbsenceException.class, () -> {
             cartItemService.updateCartItem(CART_ITEM_ID, newQuantity);
         });
@@ -382,12 +328,9 @@ class CartItemServiceImplTest {
 
     @Test
     void testUpdateCartItem_InvalidQuantity_Zero() {
-        // Arrange
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(false);
         when(cartItemRepository.findById(CART_ITEM_ID)).thenReturn(Optional.of(testCartItem));
-
-        // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> {
             cartItemService.updateCartItem(CART_ITEM_ID, 0);
         });
@@ -395,14 +338,11 @@ class CartItemServiceImplTest {
 
     @Test
     void testUpdateCartItem_ProductNotFound() {
-        // Arrange
         int newQuantity = 10;
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(false);
         when(cartItemRepository.findById(CART_ITEM_ID)).thenReturn(Optional.of(testCartItem));
         when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.empty());
-
-        // Act & Assert
         assertThrows(ProductAbsenceException.class, () -> {
             cartItemService.updateCartItem(CART_ITEM_ID, newQuantity);
         });
@@ -410,15 +350,12 @@ class CartItemServiceImplTest {
 
     @Test
     void testUpdateCartItem_InsufficientQuantity() {
-        // Arrange
-        int newQuantity = 150; // Больше чем доступно
+        int newQuantity = 150;
         testProduct.setQuantity(50);
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(false);
         when(cartItemRepository.findById(CART_ITEM_ID)).thenReturn(Optional.of(testCartItem));
         when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(testProduct));
-
-        // Act & Assert
         assertThrows(CartItemQuantityException.class, () -> {
             cartItemService.updateCartItem(CART_ITEM_ID, newQuantity);
         });
@@ -426,7 +363,6 @@ class CartItemServiceImplTest {
 
     @Test
     void testDeleteCartItemById_Success() {
-        // Arrange
         testCart.getItems().add(testCartItem);
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(cartItemRepository.findById(CART_ITEM_ID)).thenReturn(Optional.of(testCartItem));
@@ -434,10 +370,7 @@ class CartItemServiceImplTest {
         when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(testProduct));
         when(cartRepository.save(any(Cart.class))).thenReturn(testCart);
 
-        // Act
         cartItemService.deleteCartItemById(CART_ITEM_ID);
-
-        // Assert
         verify(productRepository).save(testProduct);
         verify(cartItemRepository).delete(testCartItem);
         verify(cartRepository).save(testCart);
@@ -445,10 +378,8 @@ class CartItemServiceImplTest {
 
     @Test
     void testDeleteCartItemById_CartItemNotFound() {
-        // Arrange
         when(cartItemRepository.findById(CART_ITEM_ID)).thenReturn(Optional.empty());
 
-        // Act & Assert
         assertThrows(CartItemAbsenceException.class, () -> {
             cartItemService.deleteCartItemById(CART_ITEM_ID);
         });
@@ -457,12 +388,9 @@ class CartItemServiceImplTest {
 
     @Test
     void testDeleteCartItemById_UnpaidOrderExists() {
-        // Arrange
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(cartItemRepository.findById(CART_ITEM_ID)).thenReturn(Optional.of(testCartItem));
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(true);
-
-        // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> {
             cartItemService.deleteCartItemById(CART_ITEM_ID);
         });
@@ -471,7 +399,6 @@ class CartItemServiceImplTest {
 
     @Test
     void testDeleteCartItemById_DifferentUser() {
-        // Arrange
         User otherUser = new User();
         otherUser.setId(999L);
         Cart otherCart = new Cart();
@@ -481,8 +408,6 @@ class CartItemServiceImplTest {
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(cartItemRepository.findById(CART_ITEM_ID)).thenReturn(Optional.of(testCartItem));
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(false);
-
-        // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> {
             cartItemService.deleteCartItemById(CART_ITEM_ID);
         });
@@ -491,14 +416,11 @@ class CartItemServiceImplTest {
 
     @Test
     void testDeleteCartItemById_ProductNotFound() {
-        // Arrange
         testCart.getItems().add(testCartItem);
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(cartItemRepository.findById(CART_ITEM_ID)).thenReturn(Optional.of(testCartItem));
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(false);
         when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.empty());
-
-        // Act & Assert
         assertThrows(ProductAbsenceException.class, () -> {
             cartItemService.deleteCartItemById(CART_ITEM_ID);
         });
@@ -506,28 +428,21 @@ class CartItemServiceImplTest {
 
     @Test
     void testClearCartAndUpdateProductQuantities_Success() {
-        // Arrange
         List<CartItem> cartItems = List.of(testCartItem);
         when(cartItemRepository.findByCartId(CART_ID)).thenReturn(cartItems);
         when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(testProduct));
         when(productRepository.save(any(Product.class))).thenReturn(testProduct);
 
-        // Act
         cartItemService.clearCartAndUpdateProductQuantities(CART_ID);
-
-        // Assert
         verify(productRepository, times(cartItems.size())).save(any(Product.class));
         verify(cartItemRepository).deleteAll(cartItems);
     }
 
     @Test
     void testClearCartAndUpdateProductQuantities_ProductNotFound() {
-        // Arrange
         List<CartItem> cartItems = List.of(testCartItem);
         when(cartItemRepository.findByCartId(CART_ID)).thenReturn(cartItems);
         when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.empty());
-
-        // Act & Assert
         assertThrows(ProductAbsenceException.class, () -> {
             cartItemService.clearCartAndUpdateProductQuantities(CART_ID);
         });
@@ -535,14 +450,10 @@ class CartItemServiceImplTest {
 
     @Test
     void testClearCartAndUpdateProductQuantities_EmptyCart() {
-        // Arrange
         List<CartItem> emptyCartItems = new ArrayList<>();
         when(cartItemRepository.findByCartId(CART_ID)).thenReturn(emptyCartItems);
 
-        // Act
         cartItemService.clearCartAndUpdateProductQuantities(CART_ID);
-
-        // Assert
         verify(productRepository, never()).save(any());
         verify(cartItemRepository).deleteAll(emptyCartItems);
     }

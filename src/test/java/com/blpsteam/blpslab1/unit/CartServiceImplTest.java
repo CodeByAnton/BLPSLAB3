@@ -1,4 +1,4 @@
-package com.blpsteam.blpslab1.service.impl;
+package com.blpsteam.blpslab1.unit;
 
 import com.blpsteam.blpslab1.data.entities.core.Cart;
 import com.blpsteam.blpslab1.data.entities.core.User;
@@ -62,14 +62,11 @@ class CartServiceImplTest {
 
     @Test
     void testGetCart_Success() {
-        // Arrange
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(testCart));
 
-        // Act
         Cart result = cartService.getCart();
 
-        // Assert
         assertNotNull(result);
         assertEquals(testCart.getId(), result.getId());
         verify(cartRepository).findByUserId(USER_ID);
@@ -77,11 +74,9 @@ class CartServiceImplTest {
 
     @Test
     void testGetCart_NotFound() {
-        // Arrange
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
-        // Act & Assert
         assertThrows(CartAbsenceException.class, () -> {
             cartService.getCart();
         });
@@ -89,16 +84,13 @@ class CartServiceImplTest {
 
     @Test
     void testClearCart_Success() {
-        // Arrange
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(false);
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(testCart));
         when(cartRepository.save(any(Cart.class))).thenReturn(testCart);
 
-        // Act
         Cart result = cartService.clearCart();
 
-        // Assert
         assertNotNull(result);
         verify(cartItemService).clearCartAndUpdateProductQuantities(testCart.getId());
         verify(cartRepository).save(testCart);
@@ -106,11 +98,9 @@ class CartServiceImplTest {
 
     @Test
     void testClearCart_UnpaidOrderExists() {
-        // Arrange
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(true);
 
-        // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> {
             cartService.clearCart();
         });
@@ -119,27 +109,22 @@ class CartServiceImplTest {
 
     @Test
     void testCreateCart_Success() {
-        // Arrange
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(testUser));
         when(cartRepository.save(any(Cart.class))).thenReturn(testCart);
 
-        // Act
         Cart result = cartService.createCart();
 
-        // Assert
         assertNotNull(result);
         verify(cartRepository).save(any(Cart.class));
     }
 
     @Test
     void testCreateCart_AlreadyExists() {
-        // Arrange
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(testCart));
 
-        // Act & Assert
         assertThrows(CartAbsenceException.class, () -> {
             cartService.createCart();
         });
@@ -148,12 +133,10 @@ class CartServiceImplTest {
 
     @Test
     void testCreateCart_UserNotFound() {
-        // Arrange
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
         when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
 
-        // Act & Assert
         assertThrows(UserAbsenceException.class, () -> {
             cartService.createCart();
         });
@@ -161,24 +144,19 @@ class CartServiceImplTest {
 
     @Test
     void testClearCartAfterPayment_Success() {
-        // Arrange
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(false);
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(testCart));
         when(cartRepository.save(any(Cart.class))).thenReturn(testCart);
 
-        // Act
         cartService.clearCartAfterPayment(USER_ID);
 
-        // Assert
         verify(cartRepository).save(testCart);
     }
 
     @Test
     void testClearCartAfterPayment_UnpaidOrderExists() {
-        // Arrange
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(true);
 
-        // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> {
             cartService.clearCartAfterPayment(USER_ID);
         });

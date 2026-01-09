@@ -16,12 +16,8 @@ public class YooKassaConfig {
     @PostConstruct
     public void init() {
         envProps.validateYooKassaConfig();
-        this.apiUrl = envProps.getYooKassaApiUrl() != null && !envProps.getYooKassaApiUrl().isEmpty()
-                ? envProps.getYooKassaApiUrl()
-                : "https://api.yookassa.ru/v3/payments";
-        this.returnUrl = envProps.getYooKassaReturnUrl() != null && !envProps.getYooKassaReturnUrl().isEmpty()
-                ? envProps.getYooKassaReturnUrl()
-                : "https://se.ifmo.ru/";
+        this.apiUrl = envProps.getYooKassaApiUrl();
+        this.returnUrl = envProps.getYooKassaReturnUrl();
     }
 
     public String getShopId() {

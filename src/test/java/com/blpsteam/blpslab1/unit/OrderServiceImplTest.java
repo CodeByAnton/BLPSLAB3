@@ -1,4 +1,4 @@
-package com.blpsteam.blpslab1.service.impl;
+package com.blpsteam.blpslab1.unit;
 
 import com.blpsteam.blpslab1.data.entities.core.Cart;
 import com.blpsteam.blpslab1.data.entities.core.CartItem;
@@ -83,7 +83,6 @@ class OrderServiceImplTest {
 
     @Test
     void testCreateOrder_Success() {
-        // Arrange
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(testUser));
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(false);
@@ -95,10 +94,8 @@ class OrderServiceImplTest {
         });
         when(paymentService.createPayment(anyLong(), anyLong())).thenReturn(PAYMENT_LINK);
 
-        // Act
         String result = orderService.createOrder();
 
-        // Assert
         assertNotNull(result);
         assertEquals(PAYMENT_LINK, result);
 
@@ -106,11 +103,9 @@ class OrderServiceImplTest {
 
     @Test
     void testCreateOrder_UserNotFound() {
-        // Arrange
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
 
-        // Act & Assert
         assertThrows(UserAbsenceException.class, () -> {
             orderService.createOrder();
         });
@@ -119,12 +114,10 @@ class OrderServiceImplTest {
 
     @Test
     void testCreateOrder_UnpaidOrderExists() {
-        // Arrange
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(testUser));
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(true);
 
-        // Act & Assert
         assertThrows(OrderPaymentException.class, () -> {
             orderService.createOrder();
         });
@@ -133,13 +126,11 @@ class OrderServiceImplTest {
 
     @Test
     void testCreateOrder_CartNotFound() {
-        // Arrange
         when(userService.getUserIdFromContext()).thenReturn(USER_ID);
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(testUser));
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(false);
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
-        // Act & Assert
         assertThrows(CartAbsenceException.class, () -> {
             orderService.createOrder();
         });
@@ -148,7 +139,6 @@ class OrderServiceImplTest {
 
     @Test
     void testCreateOrder_EmptyCart() {
-        // Arrange
         Cart emptyCart = new Cart();
         emptyCart.setId(1L);
         emptyCart.setUser(testUser);
@@ -159,7 +149,6 @@ class OrderServiceImplTest {
         when(orderRepository.existsByUserIdAndStatus(USER_ID, OrderStatus.UNPAID)).thenReturn(false);
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(emptyCart));
 
-        // Act & Assert
         assertThrows(CartItemAbsenceException.class, () -> {
             orderService.createOrder();
         });
